@@ -60,6 +60,11 @@ app.get('/warning/:latLng/:forecastId?', async (req, res) => {
   }
 });
 
+// GET /health: API health check
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
 // --- Start Server ---
 // Check if Supabase credentials are loaded before starting
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
