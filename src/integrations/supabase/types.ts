@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      forecasts: {
+        Row: {
+          author_email: string
+          created_at: string
+          end_date: string
+          id: string
+          image_url: string
+          intensity_map: Json | null
+          start_date: string
+          title: string
+          trajectory: Json
+          updated_at: string
+        }
+        Insert: {
+          author_email: string
+          created_at?: string
+          end_date: string
+          id?: string
+          image_url: string
+          intensity_map?: Json | null
+          start_date: string
+          title: string
+          trajectory: Json
+          updated_at?: string
+        }
+        Update: {
+          author_email?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          image_url?: string
+          intensity_map?: Json | null
+          start_date?: string
+          title?: string
+          trajectory?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
