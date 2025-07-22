@@ -169,7 +169,7 @@ export const ForecastUploader = () => {
                 <img 
                   src={imageUrl} 
                   alt="Uploaded forecast" 
-                  className="max-w-full h-32 object-contain border rounded"
+                  className="w-full h-auto object-contain border rounded"
                 />
               </div>
             )}

@@ -54,12 +54,27 @@ export const PublicMapViewer = ({ forecast }: PublicMapViewerProps) => {
     });
 
     // Add forecast image overlay
+    /*
     if (forecast.image_url) {
-      const bounds = map.getBounds();
-      L.imageOverlay(forecast.image_url, bounds, {
-        opacity: 0.6
+      const currentBounds = map.getBounds();
+      const center = currentBounds.getCenter();
+      const originalWidthDegrees = currentBounds.getEast() - currentBounds.getWest();
+      const originalHeightDegrees = currentBounds.getNorth() - currentBounds.getSouth();
+
+      const newWidthDegrees = originalWidthDegrees * 0.70; // Reduce width to 70%
+      const newHeightDegrees = originalHeightDegrees * 1.50; // Increase height to 150%
+
+      const newBounds = L.latLngBounds([
+        [center.lat - newHeightDegrees / 2, center.lng - newWidthDegrees / 2],
+        [center.lat + newHeightDegrees / 2, center.lng + newWidthDegrees / 2]
+      ]);
+
+      L.imageOverlay(forecast.image_url, newBounds, {
+        opacity: 0.7,
+        className: 'forecast-overlay-shifted' // Add a class for CSS styling
       }).addTo(map);
     }
+      */
 
     // Add trajectory
     if (forecast.trajectory) {

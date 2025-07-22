@@ -105,8 +105,8 @@ export const PublicViewer = () => {
               <CardContent>
                 <PublicMapViewer forecast={forecast} />
                 <div className="mt-4 text-sm text-muted-foreground">
-                  <p>🔴 Red lines show predicted sargassum trajectory</p>
-                  <p>🔵 Blue areas indicate zones of higher intensity</p>
+                  <p>🔵 Blue areas show impacted sargassum areas</p>
+                  <p>🔴 Red lines indicate zones of higher intensity</p>
                   <p>Last updated: {format(new Date(forecast.created_at), 'MMM dd, yyyy HH:mm')}</p>
                 </div>
               </CardContent>

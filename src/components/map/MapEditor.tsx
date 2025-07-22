@@ -134,20 +134,20 @@ export const MapEditor = ({ imageUrl, onTrajectoryChange, onIntensityMapChange }
   return (
     <div className="space-y-4">
       {imageUrl && (
-        <Button 
+        <Button
           onClick={toggleImageOverlay}
           variant="outline"
         >
           {imageOverlay ? 'Hide' : 'Show'} Forecast Image
         </Button>
       )}
-      <div 
-        ref={mapRef} 
+      <div
+        ref={mapRef}
         className="w-full h-96 border rounded-lg"
         style={{ minHeight: '400px' }}
       />
       <p className="text-sm text-muted-foreground">
-        Use the drawing tools to mark the sargassum trajectory (red lines) and affected zones (blue polygons).
+        Use the drawing tools to mark the sargassum affected zones (blue polygons) and higher intensity (red lines).
       </p>
     </div>
   );
