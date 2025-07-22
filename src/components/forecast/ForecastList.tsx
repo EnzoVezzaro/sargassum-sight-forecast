@@ -4,15 +4,27 @@ import { Forecast } from '@/types/forecast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, Calendar, User } from 'lucide-react';
+import { Trash2, Calendar, User, Pencil } from 'lucide-react'; // Import Pencil
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
-export const ForecastList = () => {
+// Modified to accept an isEditable prop and onSelectForecast prop
+export const ForecastList = ({ 
+  onEdit, 
+  isEditable = false, 
+  onSelectForecast, // New prop for selection
+  selectedForecastId // Prop to receive the currently selected forecast ID
+}: { 
+  onEdit?: (forecastId: string) => void; 
+  isEditable?: boolean; 
+  onSelectForecast?: (forecast: Forecast) => void; // Function to call on selection
+  selectedForecastId?: string; // ID of the currently selected forecast
+}) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
   const [loading, setLoading] = useState(true);
+  // No need for local selectedForecastId state here, it will be managed by the parent
 
   const fetchForecasts = async () => {
     try {
@@ -34,6 +46,7 @@ export const ForecastList = () => {
     }
   };
 
+  // Re-added deleteForecast function
   const deleteForecast = async (id: string) => {
     try {
       const { error } = await supabase
@@ -75,42 +88,65 @@ export const ForecastList = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {forecasts.map((forecast) => (
-            <Card key={forecast.id}>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{forecast.title}</CardTitle>
-                  {user?.email === forecast.author_email && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => deleteForecast(forecast.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {forecasts.map((forecast) => {
+            const isSelected = forecast.id === selectedForecastId;
+            return (
+              <Card 
+                key={forecast.id} 
+                className={`w-full cursor-pointer ${isSelected ? 'border-2 border-primary' : ''}`} // Add selection styling
+                onClick={() => onSelectForecast?.(forecast)} // Call onSelectForecast on click
+              >
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg">{forecast.title}</CardTitle>
+                    {/* Conditionally render edit/delete buttons based on isEditable and user ownership */}
+                    {isEditable && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click event
+                            onEdit?.(forecast.id);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button // Delete button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click event
+                            deleteForecast(forecast.id);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {format(new Date(forecast.start_date), 'MMM dd, yyyy')} - {format(new Date(forecast.end_date), 'MMM dd, yyyy')}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <User className="h-4 w-4" />
+                    {forecast.author_email}
+                  </div>
+                  {forecast.image_url && (
+                    <img 
+                      src={forecast.image_url} 
+                      alt={forecast.title}
+                      className="w-full max-h-48 object-contain border rounded mt-2"
+                    />
                   )}
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(forecast.start_date), 'MMM dd, yyyy')} - {format(new Date(forecast.end_date), 'MMM dd, yyyy')}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  {forecast.author_email}
-                </div>
-                {forecast.image_url && (
-                  <img 
-                    src={forecast.image_url} 
-                    alt={forecast.title}
-                    className="w-full max-h-48 object-contain border rounded mt-2"
-                  />
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

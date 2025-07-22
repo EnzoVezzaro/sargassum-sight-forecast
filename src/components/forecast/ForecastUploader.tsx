@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MapEditor } from '@/components/map/MapEditor';
 import { CreateForecastInput } from '@/types/forecast';
 import { Upload, Loader2 } from 'lucide-react';
+import { Forecast } from '@/types/forecast';
 import { ForecastList } from './ForecastList';
 
 export const ForecastUploader = () => {
@@ -26,6 +27,7 @@ export const ForecastUploader = () => {
   const [trajectory, setTrajectory] = useState<any>(null);
   const [intensityMap, setIntensityMap] = useState<any>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [forecastToEdit, setForecastToEdit] = useState<Forecast | null>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,6 +66,26 @@ export const ForecastUploader = () => {
     }
   };
 
+  const handleEditForecast = async (forecastId: string) => {
+    try {
+      const { data, error } = await supabase.from('forecasts').select('*').eq('id', forecastId).single();
+      if (error) throw error;
+      if (data) {
+        setForecastToEdit(data);
+        setFormData({
+          title: data.title,
+          start_date: data.start_date ? new Date(data.start_date).toISOString().split('T')[0] : '',
+          end_date: data.end_date ? new Date(data.end_date).toISOString().split('T')[0] : '',
+        });
+        setImageUrl(data.image_url || '');
+        setTrajectory(data.trajectory);
+        setIntensityMap(data.intensity_map);
+      }
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Error fetching forecast for edit', description: error.message });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !imageUrl || !trajectory) {
@@ -78,38 +100,58 @@ export const ForecastUploader = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('forecasts')
-        .insert({
-          title: formData.title,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          image_url: imageUrl,
-          trajectory: trajectory,
-          intensity_map: intensityMap || null,
-          author_email: user.email!
-        });
+      let apiError: any = null; // Use a different variable name to avoid conflict with catch block's error
+      if (forecastToEdit) {
+        // Update existing forecast
+        const { error: updateError } = await supabase
+          .from('forecasts')
+          .update({
+            title: formData.title,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            image_url: imageUrl,
+            trajectory: trajectory,
+            intensity_map: intensityMap || null,
+          })
+          .eq('id', forecastToEdit.id);
+        apiError = updateError;
+      } else {
+        // Insert new forecast
+        const { error: insertError } = await supabase
+          .from('forecasts')
+          .insert({
+            title: formData.title,
+            start_date: formData.start_date,
+            end_date: formData.end_date,
+            image_url: imageUrl,
+            trajectory: trajectory,
+            intensity_map: intensityMap || null,
+            author_email: user.email!
+          });
+        apiError = insertError;
+      }
 
-      if (error) throw error;
+      if (apiError) throw apiError;
 
       toast({
         title: "Success",
-        description: "Forecast saved successfully!",
+        description: forecastToEdit ? "Forecast updated successfully!" : "Forecast saved successfully!",
       });
 
-      // Reset form
+      // Reset form and state
       setFormData({ title: '', start_date: '', end_date: '' });
       setImageFile(null);
       setImageUrl('');
       setTrajectory(null);
       setIntensityMap(null);
+      setForecastToEdit(null); // Clear editing state
       setRefreshKey(prevKey => prevKey + 1); // Increment key to refresh ForecastList
 
 
-    } catch (error: any) {
+    } catch (error: any) { // This error is from the try-catch block itself
       toast({
         variant: "destructive",
-        title: "Error saving forecast",
+        title: `Error ${forecastToEdit ? 'updating' : 'saving'} forecast`,
         description: error.message,
       });
     } finally {
@@ -194,19 +236,19 @@ export const ForecastUploader = () => {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {forecastToEdit ? 'Updating...' : 'Saving...'}
                 </>
               ) : (
                 <>
                   <Upload className="mr-2 h-4 w-4" />
-                  Save Forecast
+                  {forecastToEdit ? 'Update Forecast' : 'Save Forecast'}
                 </>
               )}
             </Button>
           </form>
         </CardContent>
       </Card>
-      <ForecastList key={refreshKey} />
+      <ForecastList key={refreshKey} onEdit={handleEditForecast} isEditable={true} />
     </>
   );
 };

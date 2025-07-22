@@ -8,11 +8,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Calendar, RefreshCw, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { ForecastList } from '@/components/forecast/ForecastList'; // Import ForecastList
 
 export const PublicViewer = () => {
   const { toast } = useToast();
-  const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [latestForecast, setLatestForecast] = useState<Forecast | null>(null); // Renamed to avoid confusion
+  const [selectedForecast, setSelectedForecast] = useState<Forecast | null>(null); // State for selected forecast
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null); // State for user's location
+  const [isHighImpactArea, setIsHighImpactArea] = useState(false); // State to track if user is in high impact area
 
   const fetchLatestForecast = async () => {
     try {
@@ -24,7 +28,11 @@ export const PublicViewer = () => {
         .maybeSingle();
 
       if (error) throw error;
-      setForecast(data);
+      setLatestForecast(data);
+      // If no forecast is selected yet, set the latest one as the initially displayed one
+      if (!selectedForecast) {
+        setSelectedForecast(data);
+      }
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -35,6 +43,64 @@ export const PublicViewer = () => {
       setLoading(false);
     }
   };
+
+  // Function to handle forecast selection from the grid
+  const handleForecastSelect = (forecast: Forecast) => {
+    setSelectedForecast(forecast);
+  };
+
+  // Function to get user's current location
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          // Placeholder for checking high impact:
+          // setIsHighImpactArea(checkIfHighImpact(latitude, longitude, selectedForecast));
+        },
+        (error) => {
+          console.error("Error getting user location:", error);
+          toast({
+            variant: "destructive",
+            title: "Location Error",
+            description: "Could not retrieve your location.",
+          });
+        }
+      );
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Location Not Supported",
+        description: "Your browser does not support geolocation.",
+      });
+    }
+  };
+
+  // Effect to fetch location when component mounts or when a forecast is selected
+  useEffect(() => {
+    getUserLocation();
+  }, [selectedForecast]); // Re-fetch location if selectedForecast changes
+
+  // Effect to check for high impact area once location is available and forecast is loaded
+  useEffect(() => {
+    if (userLocation && selectedForecast) {
+      // Placeholder logic: In a real scenario, you'd check if userLocation falls within
+      // the impact zones defined in selectedForecast.
+      // For now, let's simulate a high impact scenario if the forecast title contains "High Impact"
+      const isHighImpact = selectedForecast.title?.toLowerCase().includes("high impact"); // Example placeholder check
+      setIsHighImpactArea(isHighImpact);
+
+      if (isHighImpact) {
+        toast({
+          title: "High Impact Alert!",
+          description: "You are currently in an area with high sargassum impact.",
+          duration: 10000, // Show alert for 10 seconds
+        });
+      }
+    }
+  }, [userLocation, selectedForecast, toast]);
+
 
   useEffect(() => {
     fetchLatestForecast();
@@ -90,29 +156,59 @@ export const PublicViewer = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {forecast ? (
+        {selectedForecast ? ( // Display selected forecast if available
           <div className="space-y-6">
+            {/* New container for location info, placed before the map card */}
+            {userLocation && (
+              <Card className="w-full shadow-lg"> {/* Similar prominence to map card */}
+                <CardHeader>
+                  <CardTitle className="text-lg">Your Location</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-1">
+                    Lat: {userLocation.lat.toFixed(4)}, Lng: {userLocation.lng.toFixed(4)}
+                  </p>
+                  {isHighImpactArea ? (
+                    <p className="text-sm font-semibold text-red-600">High Sargassum Impact Detected</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Low Sargassum Impact</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* The original Card for the selected forecast */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">{forecast.title}</CardTitle>
+                <CardTitle className="text-xl">{selectedForecast.title}</CardTitle>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    {format(new Date(forecast.start_date), 'MMM dd, yyyy')} - {format(new Date(forecast.end_date), 'MMM dd, yyyy')}
+                    {format(new Date(selectedForecast.start_date), 'MMM dd, yyyy')} - {format(new Date(selectedForecast.end_date), 'MMM dd, yyyy')}
                   </span>
                 </div>
               </CardHeader>
               <CardContent>
-                <PublicMapViewer forecast={forecast} />
-                <div className="mt-4 text-sm text-muted-foreground">
+                <PublicMapViewer forecast={selectedForecast} />
+                <div className="mt-4 text-sm text-muted-foreground"> {/* Details below map */}
                   <p>🔵 Blue areas show impacted sargassum areas</p>
                   <p>🔴 Red lines indicate zones of higher intensity</p>
-                  <p>Last updated: {format(new Date(forecast.created_at), 'MMM dd, yyyy HH:mm')}</p>
+                  <p>Last updated: {format(new Date(selectedForecast.created_at), 'MMM dd, yyyy HH:mm')}</p>
                 </div>
               </CardContent>
             </Card>
+            
+            {/* Section for Recent Forecasts Grid */}
+            <div className="mt-8"> {/* Added margin-top for spacing */}
+              <h2 className="text-2xl font-bold mb-4">Recent Forecasts</h2> {/* Added a heading for the grid */}
+              <ForecastList 
+                isEditable={false} 
+                onSelectForecast={handleForecastSelect} 
+                selectedForecastId={selectedForecast.id} // Pass the selected ID for highlighting
+              /> {/* Render ForecastList without edit/delete options */}
+            </div>
           </div>
-        ) : (
+        ) : ( // Fallback if no forecast is available at all
           <Card>
             <CardContent className="p-12 text-center">
               <h2 className="text-xl font-semibold mb-2">No Forecast Available</h2>
