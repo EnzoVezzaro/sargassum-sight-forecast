@@ -250,7 +250,6 @@ export const PublicViewer = () => {
             
             {/* Section for Recent Forecasts Grid */}
             <div className="mt-8"> {/* Added margin-top for spacing */}
-              <h2 className="text-2xl font-bold mb-4">Recent Forecasts</h2> {/* Added a heading for the grid */}
               <ForecastList 
                 isEditable={false} 
                 onSelectForecast={handleForecastSelect} 
