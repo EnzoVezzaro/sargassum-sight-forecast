@@ -9,6 +9,12 @@ import { Calendar, RefreshCw, Settings } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { ForecastList } from '@/components/forecast/ForecastList'; // Import ForecastList
+import { pointToLineDistance } from "@turf/point-to-line-distance";
+import { booleanPointInPolygon } from "@turf/boolean-point-in-polygon";
+
+// Import Turf.js functions and GeoJSON types correctly
+import * as turf from '@turf/turf';
+import { Feature, LineString, Polygon } from 'geojson'; // Import GeoJSON types from 'geojson'
 
 export const PublicViewer = () => {
   const { toast } = useToast();
@@ -56,8 +62,6 @@ export const PublicViewer = () => {
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ lat: latitude, lng: longitude });
-          // Placeholder for checking high impact:
-          // setIsHighImpactArea(checkIfHighImpact(latitude, longitude, selectedForecast));
         },
         (error) => {
           console.error("Error getting user location:", error);
@@ -85,16 +89,48 @@ export const PublicViewer = () => {
   // Effect to check for high impact area once location is available and forecast is loaded
   useEffect(() => {
     if (userLocation && selectedForecast) {
-      // Placeholder logic: In a real scenario, you'd check if userLocation falls within
-      // the impact zones defined in selectedForecast.
-      // For now, let's simulate a high impact scenario if the forecast title contains "High Impact"
-      const isHighImpact = selectedForecast.title?.toLowerCase().includes("high impact"); // Example placeholder check
-      setIsHighImpactArea(isHighImpact);
+      let isImpacted = false;
+      
+      // Use Turf functions with the correct namespace
+      const userPoint = turf.point([userLocation.lng, userLocation.lat]); // Turf expects [longitude, latitude]
 
-      if (isHighImpact) {
+      // Check against trajectory (lines)
+      if (selectedForecast.trajectory && Array.isArray(selectedForecast.trajectory.features)) {
+        for (const feature of selectedForecast.trajectory.features) {
+          if (feature.geometry.type === 'LineString') {
+            const line = turf.lineString(feature.geometry.coordinates);
+            const distanceInKm = pointToLineDistance(userPoint, line, { units: 'kilometers' });
+            if (distanceInKm <= 10) {
+              isImpacted = true;
+              break; // Found an impact, no need to check further
+            }
+          }
+        }
+      }
+
+      // Check against intensity map (polygons) if not already impacted by trajectory
+      if (!isImpacted && selectedForecast.intensity_map && Array.isArray(selectedForecast.intensity_map.features)) {
+        for (const feature of selectedForecast.intensity_map.features) {
+          if (feature.geometry.type === 'Polygon') {
+            // Ensure coordinates are in the correct format for turf.polygon
+            // GeoJSON Polygon coordinates are an array of linear rings (arrays of points)
+            // The first ring is the exterior boundary, subsequent rings are holes.
+            // turf.polygon expects an array of rings.
+            const polygonGeoJSON = turf.polygon(feature.geometry.coordinates); // Use turf.polygon
+            if (booleanPointInPolygon(userPoint, polygonGeoJSON)) {
+              isImpacted = true;
+              break; // Found an impact, no need to check further
+            }
+          }
+        }
+      }
+
+      setIsHighImpactArea(isImpacted);
+
+      if (isImpacted) {
         toast({
-          title: "High Impact Alert!",
-          description: "You are currently in an area with high sargassum impact.",
+          title: "Sargassum Impact Detected!",
+          description: "You are currently in or near an area with sargassum impact.",
           duration: 10000, // Show alert for 10 seconds
         });
       }
@@ -173,6 +209,19 @@ export const PublicViewer = () => {
                   ) : (
                     <p className="text-sm text-muted-foreground">Low Sargassum Impact</p>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {!userLocation && (
+              <Card className="w-full shadow-lg">
+                <CardContent className="pt-8 flex flex-col items-center justify-center text-center">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Enable location services to see your current sargassum impact.
+                  </p>
+                  <Button onClick={getUserLocation}>
+                    Get My Location
+                  </Button>
                 </CardContent>
               </Card>
             )}

@@ -98,7 +98,7 @@ export const PublicMapViewer = ({ forecast, userLocation }: PublicMapViewerProps
 
   return (
     <div className="w-full h-96 border rounded-lg overflow-hidden">
-      <div ref={mapRef} className="w-full h-full" />
+      <div ref={mapRef} className="w-full h-full" style={{ zIndex: 1 }} />
     </div>
   );
 };
