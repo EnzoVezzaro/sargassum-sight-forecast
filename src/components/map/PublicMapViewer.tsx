@@ -13,11 +13,13 @@ L.Icon.Default.mergeOptions({
 
 interface PublicMapViewerProps {
   forecast?: Forecast;
+  userLocation?: { lat: number; lng: number } | null; // Added userLocation prop
 }
 
-export const PublicMapViewer = ({ forecast }: PublicMapViewerProps) => {
+export const PublicMapViewer = ({ forecast, userLocation }: PublicMapViewerProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null); // Ref to keep track of the user's marker
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -41,42 +43,20 @@ export const PublicMapViewer = ({ forecast }: PublicMapViewerProps) => {
     };
   }, []);
 
+  // Effect to handle forecast layers and user location marker
   useEffect(() => {
     if (!mapInstanceRef.current || !forecast) return;
 
     const map = mapInstanceRef.current;
 
-    // Clear existing layers
+    // Clear existing forecast layers (GeoJSON, ImageOverlay)
     map.eachLayer((layer) => {
       if (layer instanceof L.GeoJSON || layer instanceof L.ImageOverlay) {
         map.removeLayer(layer);
       }
     });
 
-    // Add forecast image overlay
-    /*
-    if (forecast.image_url) {
-      const currentBounds = map.getBounds();
-      const center = currentBounds.getCenter();
-      const originalWidthDegrees = currentBounds.getEast() - currentBounds.getWest();
-      const originalHeightDegrees = currentBounds.getNorth() - currentBounds.getSouth();
-
-      const newWidthDegrees = originalWidthDegrees * 0.70; // Reduce width to 70%
-      const newHeightDegrees = originalHeightDegrees * 1.50; // Increase height to 150%
-
-      const newBounds = L.latLngBounds([
-        [center.lat - newHeightDegrees / 2, center.lng - newWidthDegrees / 2],
-        [center.lat + newHeightDegrees / 2, center.lng + newWidthDegrees / 2]
-      ]);
-
-      L.imageOverlay(forecast.image_url, newBounds, {
-        opacity: 0.7,
-        className: 'forecast-overlay-shifted' // Add a class for CSS styling
-      }).addTo(map);
-    }
-      */
-
-    // Add trajectory
+    // Add forecast trajectory
     if (forecast.trajectory) {
       L.geoJSON(forecast.trajectory, {
         style: (feature) => {
@@ -102,7 +82,19 @@ export const PublicMapViewer = ({ forecast }: PublicMapViewerProps) => {
         }
       }).addTo(map);
     }
-  }, [forecast]);
+
+    // Add user location marker if userLocation is provided
+    if (userLocation) {
+      // Remove previous marker if it exists
+      if (userMarkerRef.current) {
+        map.removeLayer(userMarkerRef.current);
+      }
+
+      const marker = L.marker([userLocation.lat, userLocation.lng]).addTo(map);
+      userMarkerRef.current = marker; // Store the new marker
+    }
+
+  }, [forecast, userLocation]); // Re-run effect when forecast or userLocation changes
 
   return (
     <div className="w-full h-96 border rounded-lg overflow-hidden">

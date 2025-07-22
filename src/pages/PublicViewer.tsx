@@ -189,7 +189,8 @@ export const PublicViewer = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <PublicMapViewer forecast={selectedForecast} />
+                {/* Pass userLocation to PublicMapViewer to display a pin */}
+                <PublicMapViewer forecast={selectedForecast} userLocation={userLocation} />
                 <div className="mt-4 text-sm text-muted-foreground"> {/* Details below map */}
                   <p>🔵 Blue areas show impacted sargassum areas</p>
                   <p>🔴 Red lines indicate zones of higher intensity</p>
